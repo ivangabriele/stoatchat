@@ -35,7 +35,7 @@ pub async fn raise_if_in_voice(user: &User, channel_id: &str) -> Result<()> {
         .to_internal_error()?
         > 0
     {
-        Err(create_error!(NotConnected))
+        Err(create_error!(AlreadyConnected))
     } else {
         Ok(())
     }
