@@ -199,8 +199,8 @@ pub async fn ingress(
                 };
             }
         }
-        // Audio/video track was started/stopped
-        "track_published" | "track_unpublished" => {
+        // Audio/video track was started/stopped/unmuted/muted
+        "track_published" | "track_unpublished" | "track_unmuted" | "track_muted" => {
             let channel_id = channel_id.to_internal_error()?;
             let user_id = user_id.to_internal_error()?;
             let track = event.track.as_ref().to_internal_error()?;
@@ -255,7 +255,7 @@ pub async fn ingress(
                 channel_id,
                 channel.server(),
                 user_id,
-                event.event == "track_published", // to avoid duplicating this entire case twice
+                event.event == "track_published" || event.event == "track_unmuted", // to avoid duplicating this entire case twice
                 track.source,
             )
             .await?;
