@@ -1,11 +1,12 @@
 use revolt_database::{
-    util::{permissions::DatabasePermissionQuery, reference::Reference},
-    Database, User,
+    AuditLogEntryAction, Database, PartialRole, User, util::{permissions::DatabasePermissionQuery, reference::Reference}
 };
 use revolt_models::v0;
-use revolt_permissions::{calculate_server_permissions, ChannelPermission, Override};
+use revolt_permissions::{ChannelPermission, Override, OverrideField, calculate_server_permissions};
 use revolt_result::{create_error, Result};
 use rocket::{serde::json::Json, State};
+
+use crate::util::audit_log_reason::AuditLogReason;
 
 /// # Set Role Permission
 ///
@@ -15,6 +16,7 @@ use rocket::{serde::json::Json, State};
 pub async fn set_role_permission(
     db: &State<Database>,
     user: User,
+    reason: AuditLogReason,
     target: Reference<'_>,
     role_id: String,
     data: Json<v0::DataSetServerRolePermission>,
@@ -40,9 +42,22 @@ pub async fn set_role_permission(
             .throw_permission_override(current_value, &data.permissions)
             .await?;
 
+        let override_field: OverrideField = data.permissions.into();
+
         server
-            .set_role_permission(db, &role_id, data.permissions.into())
+            .set_role_permission(db, &role_id, override_field.clone())
             .await?;
+
+        AuditLogEntryAction::RoleEdit {
+            role: role_id,
+            remove: Vec::new(),
+            partial: PartialRole {
+                permissions: Some(override_field),
+                ..Default::default()
+            },
+        }
+        .insert(db, server.id.clone(), reason.0, user.id)
+        .await;
 
         Ok(Json(server.into()))
     } else {

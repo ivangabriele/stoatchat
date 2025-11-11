@@ -1,11 +1,12 @@
 use revolt_database::{
-    util::{permissions::DatabasePermissionQuery, reference::Reference},
-    Database, User,
+    AuditLogEntryAction, Database, User, util::{permissions::DatabasePermissionQuery, reference::Reference}
 };
 use revolt_models::v0;
 use revolt_permissions::{calculate_server_permissions, ChannelPermission};
 use revolt_result::{create_error, Result};
 use rocket::{serde::json::Json, State};
+
+use crate::util::audit_log_reason::AuditLogReason;
 
 /// # Edits server roles ranks
 ///
@@ -15,6 +16,7 @@ use rocket::{serde::json::Json, State};
 pub async fn edit_role_ranks(
     db: &State<Database>,
     user: User,
+    reason: AuditLogReason,
     target: Reference<'_>,
     data: Json<v0::DataEditRoleRanks>,
 ) -> Result<Json<v0::Server>> {
@@ -68,7 +70,11 @@ pub async fn edit_role_ranks(
         }
     }
 
-    server.set_role_ordering(db, new_order).await?;
+    server.set_role_ordering(db, new_order.clone()).await?;
+
+    AuditLogEntryAction::RolesReorder { positions: new_order }
+        .insert(db, server.id.clone(), reason.0, user.id)
+        .await;
 
     Ok(Json(server.into()))
 }

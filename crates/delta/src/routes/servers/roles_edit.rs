@@ -1,12 +1,13 @@
 use revolt_database::{
-    util::{permissions::DatabasePermissionQuery, reference::Reference},
-    Database, PartialRole, User,
+    AuditLogEntryAction, Database, FieldsRole, PartialRole, User, util::{permissions::DatabasePermissionQuery, reference::Reference}
 };
 use revolt_models::v0;
 use revolt_permissions::{calculate_server_permissions, ChannelPermission};
 use revolt_result::{create_error, Result};
 use rocket::{serde::json::Json, State};
 use validator::Validate;
+
+use crate::util::audit_log_reason::AuditLogReason;
 
 /// # Edit Role
 ///
@@ -16,6 +17,7 @@ use validator::Validate;
 pub async fn edit(
     db: &State<Database>,
     user: User,
+    reason: AuditLogReason,
     target: Reference<'_>,
     role_id: String,
     data: Json<v0::DataEditRole>,
@@ -56,14 +58,20 @@ pub async fn edit(
             ..Default::default()
         };
 
+        let remove = remove.into_iter().map(Into::into).collect::<Vec<FieldsRole>>();
+
         role.update(
             db,
             &server.id,
             &role_id,
-            partial,
-            remove.into_iter().map(Into::into).collect(),
+            partial.clone(),
+            remove.clone(),
         )
         .await?;
+
+        AuditLogEntryAction::RoleEdit { role: role_id, remove, partial }
+            .insert(db, server.id, reason.0, user.id)
+            .await;
 
         Ok(Json(role.into()))
     } else {

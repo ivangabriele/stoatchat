@@ -1,6 +1,5 @@
 use revolt_database::{
-    util::{permissions::DatabasePermissionQuery, reference::Reference},
-    Database, RemovalIntention, ServerBan, User,
+    AuditLogEntryAction, Database, RemovalIntention, ServerBan, User, util::{permissions::DatabasePermissionQuery, reference::Reference}
 };
 use revolt_models::v0;
 
@@ -56,8 +55,12 @@ pub async fn ban(
             .await?;
     }
 
-    ServerBan::create(db, &server, target.id, data.reason)
-        .await
-        .map(Into::into)
-        .map(Json)
+    let ban = ServerBan::create(db, &server, target.id, data.reason.clone())
+        .await?;
+
+    AuditLogEntryAction::BanCreate { user: target.id.to_string() }
+        .insert(db, server.id, data.reason, user.id)
+        .await;
+
+    Ok(Json(ban.into()))
 }

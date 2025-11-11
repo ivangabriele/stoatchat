@@ -437,6 +437,14 @@ impl Channel {
         }
     }
 
+    /// Clone this channel's server id
+    pub fn server(&self) -> Option<&str> {
+        match self {
+            Channel::TextChannel { server, .. } => Some(server),
+            _ => None,
+        }
+    }
+
     /// Set role permission on a channel
     pub async fn set_role_permission(
         &mut self,

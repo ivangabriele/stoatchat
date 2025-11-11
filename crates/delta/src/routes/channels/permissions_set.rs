@@ -1,11 +1,12 @@
 use revolt_database::{
-    util::{permissions::DatabasePermissionQuery, reference::Reference},
-    Database, User,
+    AuditLogEntryAction, Database, User, util::{permissions::DatabasePermissionQuery, reference::Reference}
 };
 use revolt_models::v0;
-use revolt_permissions::{calculate_channel_permissions, ChannelPermission, Override};
+use revolt_permissions::{ChannelPermission, Override, OverrideField, calculate_channel_permissions};
 use revolt_result::{create_error, Result};
 use rocket::{serde::json::Json, State};
+
+use crate::util::audit_log_reason::AuditLogReason;
 
 /// # Set Role Permission
 ///
@@ -17,6 +18,7 @@ use rocket::{serde::json::Json, State};
 pub async fn set_role_permissions(
     db: &State<Database>,
     user: User,
+    reason: AuditLogReason,
     target: Reference<'_>,
     role_id: String,
     data: Json<v0::DataSetRolePermissions>,
@@ -38,9 +40,17 @@ pub async fn set_role_permissions(
                 .throw_permission_override(current_value, &data.permissions)
                 .await?;
 
+            let override_field: OverrideField = data.permissions.clone().into();
+
+            let server_id = server.id.clone();
+
             channel
-                .set_role_permission(db, &role_id, data.permissions.clone().into())
+                .set_role_permission(db, &role_id, override_field.clone())
                 .await?;
+
+            AuditLogEntryAction::ChannelRolePermissionsEdit { channel: channel.id().to_string(), role: role_id, permissions: override_field }
+                .insert(db, server_id, reason.0, user.id)
+                .await;
 
             Ok(Json(channel.into()))
         } else {

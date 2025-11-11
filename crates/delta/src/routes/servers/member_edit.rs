@@ -1,8 +1,7 @@
 use std::collections::HashSet;
 
 use revolt_database::{
-    util::{permissions::DatabasePermissionQuery, reference::Reference},
-    Database, File, PartialMember, User,
+    AuditLogEntryAction, Database, FieldsMember, File, PartialMember, User, util::{permissions::DatabasePermissionQuery, reference::Reference}
 };
 use revolt_models::v0;
 
@@ -10,6 +9,8 @@ use revolt_permissions::{calculate_server_permissions, ChannelPermission};
 use revolt_result::{create_error, Result};
 use rocket::{serde::json::Json, State};
 use validator::Validate;
+
+use crate::util::audit_log_reason::AuditLogReason;
 
 /// # Edit Member
 ///
@@ -19,6 +20,7 @@ use validator::Validate;
 pub async fn edit(
     db: &State<Database>,
     user: User,
+    reason: AuditLogReason,
     server: Reference<'_>,
     member: Reference<'_>,
     data: Json<v0::DataMemberEdit>,
@@ -134,9 +136,15 @@ pub async fn edit(
         partial.avatar = Some(File::use_user_avatar(db, &avatar, &user.id, &user.id).await?);
     }
 
+    let remove = remove.into_iter().map(Into::into).collect::<Vec<FieldsMember>>();
+
     member
-        .update(db, partial, remove.into_iter().map(Into::into).collect())
+        .update(db, partial.clone(), remove.clone())
         .await?;
+
+    AuditLogEntryAction::MemberEdit { user: member.id.user.clone(), remove, partial }
+        .insert(db, server.id, reason.0, user.id)
+        .await;
 
     Ok(Json(member.into()))
 }

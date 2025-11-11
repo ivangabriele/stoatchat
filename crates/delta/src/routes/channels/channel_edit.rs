@@ -1,12 +1,13 @@
 use revolt_database::{
-    util::{permissions::DatabasePermissionQuery, reference::Reference},
-    Channel, Database, File, PartialChannel, SystemMessage, User, AMQP,
+    AMQP, AuditLogEntryAction, Channel, Database, FieldsChannel, File, PartialChannel, SystemMessage, User, util::{permissions::DatabasePermissionQuery, reference::Reference}
 };
 use revolt_models::v0;
 use revolt_permissions::{calculate_channel_permissions, ChannelPermission};
 use revolt_result::{create_error, Result};
 use rocket::{serde::json::Json, State};
 use validator::Validate;
+
+use crate::util::audit_log_reason::AuditLogReason;
 
 /// # Edit Channel
 ///
@@ -17,6 +18,7 @@ pub async fn edit(
     db: &State<Database>,
     amqp: &State<AMQP>,
     user: User,
+    reason: AuditLogReason,
     target: Reference<'_>,
     data: Json<v0::DataEditChannel>,
 ) -> Result<Json<v0::Channel>> {
@@ -208,13 +210,21 @@ pub async fn edit(
                 }
             }
 
+            let remove = data.remove.into_iter().map(|f| f.into()).collect::<Vec<FieldsChannel>>();
+
             channel
                 .update(
                     db,
-                    partial,
-                    data.remove.into_iter().map(|f| f.into()).collect(),
+                    partial.clone(),
+                    remove.clone(),
                 )
                 .await?;
+
+            if let Channel::TextChannel { id, server, .. } | Channel::VoiceChannel { id, server, .. } = &channel {
+                AuditLogEntryAction::ChannelEdit { channel: id.clone(), remove, partial }
+                    .insert(db, server.clone(), reason.0, user.id)
+                    .await;
+            };
         }
         _ => return Err(create_error!(InvalidOperation)),
     };

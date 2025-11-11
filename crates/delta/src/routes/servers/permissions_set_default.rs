@@ -1,6 +1,6 @@
 use revolt_database::{
     util::{permissions::DatabasePermissionQuery, reference::Reference},
-    Database, PartialServer, User,
+    AuditLogEntryAction, Database, PartialServer, User,
 };
 use revolt_models::v0;
 use revolt_permissions::{
@@ -8,6 +8,8 @@ use revolt_permissions::{
 };
 use revolt_result::Result;
 use rocket::{serde::json::Json, State};
+
+use crate::util::audit_log_reason::AuditLogReason;
 
 /// # Set Default Permission
 ///
@@ -17,6 +19,7 @@ use rocket::{serde::json::Json, State};
 pub async fn set_default_server_permissions(
     db: &State<Database>,
     user: User,
+    reason: AuditLogReason,
     target: Reference<'_>,
     data: Json<DataPermissionsValue>,
 ) -> Result<Json<v0::Server>> {
@@ -39,16 +42,19 @@ pub async fn set_default_server_permissions(
         )
         .await?;
 
-    server
-        .update(
-            db,
-            PartialServer {
-                default_permissions: Some(data.permissions as i64),
-                ..Default::default()
-            },
-            vec![],
-        )
-        .await?;
+    let partial = PartialServer {
+        default_permissions: Some(data.permissions as i64),
+        ..Default::default()
+    };
+
+    server.update(db, partial.clone(), vec![]).await?;
+
+    AuditLogEntryAction::ServerEdit {
+        remove: Vec::new(),
+        partial,
+    }
+    .insert(db, server.id.clone(), reason.0, user.id)
+    .await;
 
     Ok(Json(server.into()))
 }

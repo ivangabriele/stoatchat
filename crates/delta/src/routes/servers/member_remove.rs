@@ -1,11 +1,12 @@
 use revolt_database::{
-    util::{permissions::DatabasePermissionQuery, reference::Reference},
-    Database, RemovalIntention, User,
+    AuditLogEntryAction, Database, RemovalIntention, User, util::{permissions::DatabasePermissionQuery, reference::Reference}
 };
 use revolt_permissions::{calculate_server_permissions, ChannelPermission};
 use revolt_result::{create_error, Result};
 use rocket::State;
 use rocket_empty::EmptyResponse;
+
+use crate::util::audit_log_reason::AuditLogReason;
 
 /// # Kick Member
 ///
@@ -15,6 +16,7 @@ use rocket_empty::EmptyResponse;
 pub async fn kick(
     db: &State<Database>,
     user: User,
+    reason: AuditLogReason,
     target: Reference<'_>,
     member: Reference<'_>,
 ) -> Result<EmptyResponse> {
@@ -42,6 +44,11 @@ pub async fn kick(
 
     member
         .remove(db, &server, RemovalIntention::Kick, false)
-        .await
-        .map(|_| EmptyResponse)
+        .await?;
+
+    AuditLogEntryAction::MemberKick { user: member.id.user.clone() }
+        .insert(db, server.id, reason.0, user.id)
+        .await;
+
+    Ok(EmptyResponse)
 }

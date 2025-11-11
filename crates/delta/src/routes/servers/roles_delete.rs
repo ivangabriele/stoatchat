@@ -1,11 +1,12 @@
 use revolt_database::{
-    util::{permissions::DatabasePermissionQuery, reference::Reference},
-    Database, User,
+    AuditLogEntryAction, Database, User, util::{permissions::DatabasePermissionQuery, reference::Reference}
 };
 use revolt_permissions::{calculate_server_permissions, ChannelPermission};
 use revolt_result::{create_error, Result};
 use rocket::State;
 use rocket_empty::EmptyResponse;
+
+use crate::util::audit_log_reason::AuditLogReason;
 
 /// # Delete Role
 ///
@@ -15,6 +16,7 @@ use rocket_empty::EmptyResponse;
 pub async fn delete(
     db: &State<Database>,
     user: User,
+    reason: AuditLogReason,
     target: Reference<'_>,
     role_id: String,
 ) -> Result<EmptyResponse> {
@@ -32,8 +34,13 @@ pub async fn delete(
         }
 
         role.delete(db, &server.id, &role_id)
-            .await
-            .map(|_| EmptyResponse)
+            .await?;
+
+        AuditLogEntryAction::RoleDelete { role: role_id.clone(), name: role.name }
+            .insert(db, server.id, reason.0, user.id)
+            .await;
+
+        Ok(EmptyResponse)
     } else {
         Err(create_error!(NotFound))
     }

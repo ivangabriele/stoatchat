@@ -1,11 +1,13 @@
 use revolt_database::{
     util::{permissions::DatabasePermissionQuery, reference::Reference},
-    Channel, Database, PartialChannel, User,
+    AuditLogEntryAction, Channel, Database, PartialChannel, User,
 };
 use revolt_models::v0::{self, DataDefaultChannelPermissions};
 use revolt_permissions::{calculate_channel_permissions, ChannelPermission};
 use revolt_result::{create_error, Result};
 use rocket::{serde::json::Json, State};
+
+use crate::util::audit_log_reason::AuditLogReason;
 
 /// # Set Default Permission
 ///
@@ -17,6 +19,7 @@ use rocket::{serde::json::Json, State};
 pub async fn set_default_channel_permissions(
     db: &State<Database>,
     user: User,
+    reason: AuditLogReason,
     target: Reference<'_>,
     data: Json<v0::DataDefaultChannelPermissions>,
 ) -> Result<Json<v0::Channel>> {
@@ -46,10 +49,14 @@ pub async fn set_default_channel_permissions(
             }
         }
         Channel::TextChannel {
+            id,
+            server,
             default_permissions,
             ..
         }
         | Channel::VoiceChannel {
+            id,
+            server,
             default_permissions,
             ..
         } => {
@@ -58,16 +65,23 @@ pub async fn set_default_channel_permissions(
                     .throw_permission_override(default_permissions.map(|x| x.into()), &field)
                     .await?;
 
-                channel
-                    .update(
-                        db,
-                        PartialChannel {
-                            default_permissions: Some(field.into()),
-                            ..Default::default()
-                        },
-                        vec![],
-                    )
-                    .await?;
+                let partial = PartialChannel {
+                    default_permissions: Some(field.into()),
+                    ..Default::default()
+                };
+
+                let id = id.clone();
+                let server = server.clone();
+
+                channel.update(db, partial.clone(), vec![]).await?;
+
+                AuditLogEntryAction::ChannelEdit {
+                    channel: id,
+                    remove: Vec::new(),
+                    partial,
+                }
+                .insert(db, server, reason.0, user.id)
+                .await;
             } else {
                 return Err(create_error!(InvalidOperation));
             }

@@ -1,12 +1,13 @@
 use revolt_database::{
-    util::{permissions::DatabasePermissionQuery, reference::Reference},
-    Channel, Database, PartialChannel, User, AMQP,
+    AMQP, AuditLogEntryAction, Channel, Database, PartialChannel, User, util::{permissions::DatabasePermissionQuery, reference::Reference}
 };
 use revolt_models::v0;
 use revolt_permissions::{calculate_channel_permissions, ChannelPermission};
 use revolt_result::{create_error, Result};
 use rocket::State;
 use rocket_empty::EmptyResponse;
+
+use crate::util::audit_log_reason::AuditLogReason;
 
 /// # Close Channel
 ///
@@ -17,6 +18,7 @@ pub async fn delete(
     db: &State<Database>,
     amqp: &State<AMQP>,
     user: User,
+    reason: AuditLogReason,
     target: Reference<'_>,
     options: v0::OptionsChannelDelete,
 ) -> Result<EmptyResponse> {
@@ -49,9 +51,15 @@ pub async fn delete(
             )
             .await
             .map(|_| EmptyResponse),
-        Channel::TextChannel { .. } | Channel::VoiceChannel { .. } => {
+        Channel::TextChannel { server, name, .. } | Channel::VoiceChannel { server, name, .. } => {
             permissions.throw_if_lacking_channel_permission(ChannelPermission::ManageChannel)?;
-            channel.delete(db).await.map(|_| EmptyResponse)
+            channel.delete(db).await?;
+
+            AuditLogEntryAction::ChannelDelete { channel: channel.id().to_string(), name: name.clone() }
+                .insert(db, server.clone(), reason.0, user.id)
+                .await;
+
+            Ok(EmptyResponse)
         }
     }
 }
