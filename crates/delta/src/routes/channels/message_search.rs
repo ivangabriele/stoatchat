@@ -1,6 +1,6 @@
 use revolt_database::{
     util::{permissions::DatabasePermissionQuery, reference::Reference},
-    Channel, Database, Message, MessageFilter, MessageQuery, MessageTimePeriod, User,
+    Database, Message, MessageFilter, MessageQuery, MessageTimePeriod, User,
 };
 use revolt_models::v0;
 use revolt_permissions::{calculate_channel_permissions, ChannelPermission};
@@ -75,12 +75,7 @@ pub async fn search(
         },
         &user,
         include_users,
-        match channel {
-            Channel::TextChannel { server, .. } | Channel::VoiceChannel { server, .. } => {
-                Some(server)
-            }
-            _ => None,
-        },
+        channel.server(),
     )
     .await
     .map(Json)

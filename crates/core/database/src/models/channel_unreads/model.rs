@@ -14,7 +14,7 @@ auto_derived!(
     }
 
     /// Composite primary key consisting of channel and user id
-    #[derive(Hash)]
+    #[derive(Hash, Eq)]
     pub struct ChannelCompositeKey {
         /// Channel Id
         pub channel: String,

@@ -3,7 +3,7 @@ use std::net::{Ipv4Addr, SocketAddr};
 use axum::{middleware::from_fn_with_state, Router};
 
 use axum_macros::FromRef;
-use revolt_database::{Database, DatabaseInfo, User, util::utoipa::TokenSecurity};
+use revolt_database::{Database, DatabaseInfo, util::utoipa::TokenSecurity};
 use revolt_ratelimits::axum as ratelimiter;
 use tokio::net::TcpListener;
 use utoipa::OpenApi;

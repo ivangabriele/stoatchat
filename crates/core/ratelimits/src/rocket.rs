@@ -8,9 +8,6 @@ use rocket::serde::json::Json;
 use rocket::{Data, Request, Response, State};
 use revolt_config::config;
 
-use revolt_rocket_okapi::r#gen::OpenApiGenerator;
-use revolt_rocket_okapi::request::{OpenApiFromRequest, RequestHeaderInput};
-
 use authifier::models::Session;
 
 use crate::ratelimiter::RequestKind;
@@ -75,16 +72,6 @@ impl<'r> FromRequest<'r> for Ratelimiter {
             Ok(ratelimiter) => Outcome::Success(*ratelimiter),
             Err(ratelimiter) => Outcome::Error((Status::TooManyRequests, *ratelimiter)),
         }
-    }
-}
-
-impl OpenApiFromRequest<'_> for Ratelimiter {
-    fn from_request_input(
-        _gen: &mut OpenApiGenerator,
-        _name: String,
-        _required: bool,
-    ) -> revolt_rocket_okapi::Result<RequestHeaderInput> {
-        Ok(RequestHeaderInput::None)
     }
 }
 

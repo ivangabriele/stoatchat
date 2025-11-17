@@ -15,16 +15,21 @@ auto_derived!(
         pub url: String,
     }
 
-    /// Voice Server Configuration
+    /// # Information about a livekit node
+    pub struct VoiceNode {
+        pub name: String,
+        pub lat: f64,
+        pub lon: f64,
+        pub public_url: String,
+    }
+
+    /// # Voice Server Configuration
     pub struct VoiceFeature {
         /// Whether voice is enabled
         pub enabled: bool,
-        /// URL pointing to the voice API
-        pub url: String,
-        /// URL pointing to the voice WebSocket server
-        pub ws: String,
+        /// All livekit nodes
+        pub nodes: Vec<VoiceNode>,
     }
-
     /// Feature Configuration
     pub struct RevoltFeatures {
         /// hCaptcha configuration
@@ -38,7 +43,7 @@ auto_derived!(
         /// Proxy service configuration
         pub january: Feature,
         /// Voice server configuration
-        pub voso: VoiceFeature,
+        pub livekit: VoiceFeature,
     }
 
     /// Build Information

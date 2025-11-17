@@ -19,22 +19,38 @@ pub async fn root() -> Result<Json<v0::RevoltConfig>> {
         features: v0::RevoltFeatures {
             captcha: v0::CaptchaFeature {
                 enabled: !config.api.security.captcha.hcaptcha_key.is_empty(),
-                key: config.api.security.captcha.hcaptcha_sitekey,
+                key: config.api.security.captcha.hcaptcha_sitekey.clone(),
             },
             email: !config.api.smtp.host.is_empty(),
             invite_only: config.api.registration.invite_only,
             autumn: v0::Feature {
                 enabled: !config.hosts.autumn.is_empty(),
-                url: config.hosts.autumn,
+                url: config.hosts.autumn.clone(),
             },
             january: v0::Feature {
                 enabled: !config.hosts.january.is_empty(),
-                url: config.hosts.january,
+                url: config.hosts.january.clone(),
             },
-            voso: v0::VoiceFeature {
-                enabled: !config.hosts.voso_legacy.is_empty(),
-                url: config.hosts.voso_legacy,
-                ws: config.hosts.voso_legacy_ws,
+            livekit: v0::VoiceFeature {
+                enabled: !config.hosts.livekit.is_empty(),
+                nodes: config
+                    .api
+                    .livekit
+                    .nodes
+                    .iter()
+                    .filter(|(_, node)| !node.private)
+                    .map(|(name, value)| v0::VoiceNode {
+                        name: name.clone(),
+                        lat: value.lat,
+                        lon: value.lon,
+                        public_url: config
+                            .hosts
+                            .livekit
+                            .get(name)
+                            .expect("Missing corresponding host for voice node")
+                            .clone(),
+                    })
+                    .collect(),
             },
         },
         ws: config.hosts.events,

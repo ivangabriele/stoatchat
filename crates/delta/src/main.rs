@@ -27,6 +27,7 @@ use amqprs::{
 use async_std::channel::unbounded;
 use authifier::AuthifierEvent;
 use rocket::data::ToByteUnit;
+use revolt_database::voice::VoiceClient;
 
 pub async fn web() -> Rocket<Build> {
     // Get settings
@@ -37,6 +38,7 @@ pub async fn web() -> Rocket<Build> {
 
     // Setup database
     let db = revolt_database::DatabaseInfo::Auto.connect().await.unwrap();
+    log::info!("database_here {db:?}");
     db.migrate_database().await.unwrap();
 
     // Setup Authifier event channel
@@ -75,7 +77,8 @@ pub async fn web() -> Rocket<Build> {
     .to_cors()
     .expect("Failed to create CORS.");
 
-
+    // Voice handler
+    let voice_client = VoiceClient::new(config.api.livekit.nodes.clone());
     // Configure Rabbit
     let connection = Connection::open(&OpenConnectionArguments::new(
         &config.rabbit.host,
@@ -122,6 +125,7 @@ pub async fn web() -> Rocket<Build> {
         .manage(db)
         .manage(amqp)
         .manage(cors.clone())
+        .manage(voice_client)
         .manage(ratelimits)
         .attach(ratelimiter::RatelimitFairing)
         .attach(cors)
