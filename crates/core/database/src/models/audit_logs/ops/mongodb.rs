@@ -26,8 +26,8 @@ impl AbstractAuditLogs for MongoDb {
             filter.insert("user", user);
         };
 
-        if let Some(ty) = query.r#type {
-            filter.insert("action.type", ty);
+        if let Some(types) = query.r#type {
+            filter.insert("action.type", doc! { "$in": types });
         };
 
         if let Some(doc) = match (query.before, query.after) {

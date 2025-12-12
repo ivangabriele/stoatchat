@@ -53,7 +53,7 @@ pub async fn create(
 
     let role_id = role.create(db, &server.id).await?;
 
-    AuditLogEntryAction::RoleCreate { role: role_id.clone() }
+    AuditLogEntryAction::RoleCreate { role: role_id.clone(), name: role.name.clone() }
         .insert(db, server.id, reason.0, user.id)
         .await;
 

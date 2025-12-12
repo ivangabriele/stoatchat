@@ -1401,8 +1401,8 @@ impl From<crate::AuditLogEntryAction> for AuditLogEntryAction {
             crate::AuditLogEntryAction::BanDelete { user } => {
                 AuditLogEntryAction::BanDelete { user }
             }
-            crate::AuditLogEntryAction::ChannelCreate { channel } => {
-                AuditLogEntryAction::ChannelCreate { channel }
+            crate::AuditLogEntryAction::ChannelCreate { channel, name } => {
+                AuditLogEntryAction::ChannelCreate { channel, name }
             }
             crate::AuditLogEntryAction::MemberEdit {
                 user,
@@ -1431,8 +1431,8 @@ impl From<crate::AuditLogEntryAction> for AuditLogEntryAction {
                 remove: remove.into_iter().map(Into::into).collect(),
                 partial: partial.into(),
             },
-            crate::AuditLogEntryAction::RoleCreate { role } => {
-                AuditLogEntryAction::RoleCreate { role }
+            crate::AuditLogEntryAction::RoleCreate { role, name } => {
+                AuditLogEntryAction::RoleCreate { role, name }
             }
             crate::AuditLogEntryAction::RoleDelete { role, name } => {
                 AuditLogEntryAction::RoleDelete { role, name }
@@ -1467,8 +1467,11 @@ impl From<crate::AuditLogEntryAction> for AuditLogEntryAction {
             crate::AuditLogEntryAction::InviteDelete { invite, channel } => {
                 AuditLogEntryAction::InviteDelete { invite, channel }
             }
-            crate::AuditLogEntryAction::WebhookCreate { webhook, channel } => {
-                AuditLogEntryAction::WebhookCreate { webhook, channel }
+            crate::AuditLogEntryAction::WebhookCreate { webhook, name, channel } => {
+                AuditLogEntryAction::WebhookCreate { webhook, name, channel }
+            }
+            crate::AuditLogEntryAction::WebhookDelete { webhook, name, channel } => {
+                AuditLogEntryAction::WebhookDelete { webhook, name, channel }
             }
             crate::AuditLogEntryAction::EmojiDelete { emoji, name } => {
                 AuditLogEntryAction::EmojiDelete { emoji, name }

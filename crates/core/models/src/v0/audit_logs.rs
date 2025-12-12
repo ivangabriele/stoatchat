@@ -31,6 +31,7 @@ auto_derived!(
         },
         ChannelCreate {
             channel: String,
+            name: String,
         },
         ChannelEdit {
             channel: String,
@@ -69,6 +70,7 @@ auto_derived!(
         },
         RoleCreate {
             role: String,
+            name: String,
         },
         RoleDelete {
             role: String,
@@ -83,7 +85,13 @@ auto_derived!(
         },
         WebhookCreate {
             webhook: String,
+            name: String,
             channel: String
+        },
+        WebhookDelete {
+            webhook: String,
+            name: String,
+            channel: String,
         },
         EmojiDelete {
             emoji: String,
@@ -96,7 +104,7 @@ auto_derived!(
     pub struct OptionsAuditLogQuery {
         #[cfg_attr(feature = "validator", validate(length(min = 26, max = 26)))]
         pub user: Option<String>,
-        pub r#type: Option<String>,
+        pub r#type: Option<Vec<String>>,
         #[cfg_attr(feature = "validator", validate(length(min = 26, max = 26)))]
         pub before: Option<String>,
         #[cfg_attr(feature = "validator", validate(length(min = 26, max = 26)))]

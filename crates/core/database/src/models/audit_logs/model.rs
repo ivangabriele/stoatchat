@@ -1,8 +1,7 @@
 use std::time::Duration;
 
 use iso8601_timestamp::Timestamp;
-use revolt_config::{config, report_internal_error};
-use rocket::tokio;
+use revolt_config::config;
 use ulid::Ulid;
 
 use crate::{
@@ -43,6 +42,7 @@ auto_derived!(
         },
         ChannelCreate {
             channel: String,
+            name: String,
         },
         ChannelEdit {
             channel: String,
@@ -81,6 +81,7 @@ auto_derived!(
         },
         RoleCreate {
             role: String,
+            name: String,
         },
         RoleDelete {
             role: String,
@@ -95,7 +96,13 @@ auto_derived!(
         },
         WebhookCreate {
             webhook: String,
+            name: String,
             channel: String
+        },
+        WebhookDelete {
+            webhook: String,
+            name: String,
+            channel: String,
         },
         EmojiDelete {
             emoji: String,
@@ -105,7 +112,7 @@ auto_derived!(
 
     pub struct AuditLogQuery {
         pub user: Option<String>,
-        pub r#type: Option<String>,
+        pub r#type: Option<Vec<String>>,
         pub before: Option<String>,
         pub after: Option<String>,
         pub limit: Option<i64>,
@@ -139,12 +146,16 @@ impl AuditLogEntryAction {
             action: self,
         };
 
-        tokio::spawn({
+        #[cfg(not(test))]
+        async_std::task::spawn({
             let db = db.clone();
             let entry = entry.clone();
 
-            async move { report_internal_error!(db.insert_audit_log_entry(&entry).await) }
+            async move { revolt_config::report_internal_error!(db.insert_audit_log_entry(&entry).await) }
         });
+
+        #[cfg(test)]
+        db.insert_audit_log_entry(&entry).await.unwrap();
 
         entry
     }

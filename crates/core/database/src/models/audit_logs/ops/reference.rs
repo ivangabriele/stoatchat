@@ -47,8 +47,8 @@ impl AbstractAuditLogs for ReferenceDb {
                     };
                 };
 
-                if let Some(action_type) = &query.r#type {
-                    if serde_json::to_value(entry.action.clone())
+                if let Some(action_types) = &query.r#type {
+                    let entry_type = serde_json::to_value(entry.action.clone())
                         .unwrap()
                         .as_object()
                         .unwrap()
@@ -56,8 +56,9 @@ impl AbstractAuditLogs for ReferenceDb {
                         .unwrap()
                         .as_str()
                         .unwrap()
-                        != action_type
-                    {
+                        .to_string();
+
+                    if !action_types.contains(&entry_type) {
                         return false;
                     }
                 };

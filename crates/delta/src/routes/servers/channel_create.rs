@@ -36,10 +36,12 @@ pub async fn create_server_channel(
         .await
         .throw_if_lacking_channel_permission(ChannelPermission::ManageChannel)?;
 
+    let channel_name = data.name.clone();
+
     let channel = Channel::create_server_channel(db, &mut server, data, true)
         .await?;
 
-    AuditLogEntryAction::ChannelCreate { channel: channel.id().to_string() }
+    AuditLogEntryAction::ChannelCreate { channel: channel.id().to_string(), name: channel_name }
         .insert(db, server.id, reason.0, user.id)
         .await;
 
